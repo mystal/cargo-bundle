@@ -49,6 +49,7 @@ pub fn bundle_project(settings: &Settings) -> ::Result<Vec<PathBuf>> {
     };
 
     let bin_name = settings.cargo_settings.binary_name()?;
+    let exec_name = settings.executable_name()?;
 
     let contents = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
                             <!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \
@@ -89,7 +90,7 @@ pub fn bundle_project(settings: &Settings) -> ::Result<Vec<PathBuf>> {
                                 <true/>\n\
                             </dict>\n\
                             </plist>",
-                           bin_name,
+                           exec_name,
                            bundle_icon_file.as_ref()
                                .and_then(|p| p.file_name())
                                .and_then(OsStr::to_str)
@@ -110,7 +111,7 @@ pub fn bundle_project(settings: &Settings) -> ::Result<Vec<PathBuf>> {
         }
     }
 
-    let mut bin_path = bundle_directory;
+    let mut bin_path = bundle_directory.clone();
     bin_path.push("MacOS");
     try!(create_dir_all(&bin_path));
     let bundle_binary = {
@@ -118,6 +119,17 @@ pub fn bundle_project(settings: &Settings) -> ::Result<Vec<PathBuf>> {
         bin_path
     };
     fs::copy(&settings.cargo_settings.binary_file, &bundle_binary)?;
+
+    // Copy the executable if one was specified.
+    if let Some(ref executable) = settings.executable {
+        let mut exec_path = bundle_directory.clone();
+        exec_path.push("MacOS");
+        let bundle_executable = {
+            exec_path.push(exec_name);
+            exec_path
+        };
+        fs::copy(executable, &bundle_executable)?;
+    }
 
     Ok(vec![app_bundle_path])
 }

@@ -172,7 +172,8 @@ pub struct Settings {
     pub icon_files: Vec<PathBuf>,
     pub copyright: Option<String>,
     pub short_desc: Option<String>,
-    pub long_desc: Option<String>
+    pub long_desc: Option<String>,
+    pub executable: Option<PathBuf>
 }
 
 impl Settings {
@@ -208,7 +209,8 @@ impl Settings {
             icon_files: vec![],
             copyright: None,
             short_desc: None,
-            long_desc: None
+            long_desc: None,
+            executable: None
         };
 
         let table = try!({
@@ -293,6 +295,20 @@ impl Settings {
                                                Bundle.toml: Expected array, found {:?}");
                     settings.resource_files = parse_resource_files(files)?
                 }
+                "executable" => {
+                    if let Value::String(s) = value {
+                        let path = PathBuf::from(s);
+                        if path.is_file() {
+                            settings.executable = Some(path);
+                        } else {
+                            bail!("{:?} must be a file", path);
+                        }
+                    } else {
+                        bail!("Invalid format for executable value in Bundle.toml: \
+                               Expected string, found {:?}",
+                              value);
+                    }
+                }
                 _ => {}
             }
         }
@@ -371,6 +387,16 @@ impl Settings {
 
     pub fn long_description(&self) -> Option<&str> {
         self.long_desc.as_ref().map(String::as_str)
+    }
+
+    pub fn executable_name(&self) -> Result<String> {
+        self.executable
+            .as_ref()
+            .unwrap_or(&self.cargo_settings.binary_file)
+            .file_name()
+            .and_then(OsStr::to_str)
+            .map(ToString::to_string)
+            .ok_or("Could not get file name of binary file.".into())
     }
 }
 
